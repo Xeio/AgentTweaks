@@ -52,15 +52,8 @@ class com.xeio.AgentTweaks.AgentTweaks
         m_uiScale = DistributedValue.Create("AgentTweaks_UIScale");
         m_uiScale.SignalChanged.Connect(SetUIScale, this);
         
-        AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
-        
         InitializeUI();
 	}
-    
-    private function AgentStatusUpdated(agentData:AgentSystemAgent)
-    {
-        UpdateMissionsDisplay();
-    }
     
     public function SetUIScale()
     {
@@ -107,7 +100,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         m_baseFillMissions = Delegate.create(availableMissionList, availableMissionList.FillMissions);
         availableMissionList.FillMissions = Delegate.create(this, FillMissionsOverride);
         
-        UpdateMissionsDisplay();
+        FillMissionsOverride();
     }
     
     private function FillMissionsOverride()
@@ -120,18 +113,6 @@ class com.xeio.AgentTweaks.AgentTweaks
         }
         
         m_baseFillMissions();
-        
-        UpdateMissionsDisplay();
-    }
-    
-    private function UpdateMissionsDisplay()
-    {
-        var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
-        
-        if (!availableMissionList)
-        {
-            return;
-        }
         
         var agent:AgentSystemAgent = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData;
                 
@@ -174,7 +155,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function SlotAgentSelected()
     {
-        UpdateMissionsDisplay();
-        _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(UpdateMissionsDisplay, this);
+        FillMissionsOverride();
+        _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(FillMissionsOverride, this);
     }
 }
