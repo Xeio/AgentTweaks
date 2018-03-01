@@ -133,6 +133,10 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function SlotAgentSelected()
     {
-        FillMissionsOverride();
+        var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
+        if (availableMissionList)
+        {
+            FillMissionsOverride();
+        }
     }
 }
