@@ -3,7 +3,6 @@ import com.GameInterface.AgentSystemAgent;
 import com.GameInterface.AgentSystemMission;
 import com.GameInterface.AgentSystem;
 import com.Utils.Archive;
-import com.Utils.LDBFormat;
 import mx.utils.Delegate;
 
 
@@ -14,6 +13,8 @@ class com.xeio.AgentTweaks.AgentTweaks
     private var m_uiScale:DistributedValue;
     
     private var m_baseFillMissions:Function;
+    
+    private var m_timeout:Number;
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -62,7 +63,8 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function InitializeUI()
     {
-        var roster = _root.agentsystem.m_Window.m_Content.m_Roster;
+        var content = _root.agentsystem.m_Window.m_Content;
+        var roster = content.m_Roster;
         
         if (!_root.agentsystem.m_Window.m_Content.m_Roster)
         {
@@ -72,9 +74,18 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         SetUIScale();
         
-        InitializeAvailableMissionsListUI();
+        content.m_MissionList.SignalEmptyMissionSelected.Connect(SlotEmptyMissionSelected, this);
         
         roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
+        
+        InitializeAvailableMissionsListUI();        
+    }
+    
+    private function SlotEmptyMissionSelected()
+    {
+        m_baseFillMissions = undefined;
+        
+        setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
     }
     
     private function InitializeAvailableMissionsListUI()
@@ -95,48 +106,57 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function FillMissionsOverride()
     {
-        m_baseFillMissions();
-        
         var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
+        
+        if (!availableMissionList)
+        {
+            return;
+        }
+        
+        m_baseFillMissions();
         
         var agent:AgentSystemAgent = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData;
                 
         for(var i:Number = 0; i < 5; i++)
 		{
             var slot:String = "m_Slot_" + i;
-            var missionData:AgentSystemMission = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList[slot].m_MissionData;
+            var agentIcon = availableMissionList[slot].m_AgentIcon;
+            var missionData:AgentSystemMission = availableMissionList[slot].m_MissionData;
             
             if (agent && missionData && missionData.m_MissionId > 0)
             {
-                availableMissionList[slot].m_AgentIcon._visible = true;
-                
                 var successChance:Number = AgentSystem.GetSuccessChanceForAgent(agent.m_AgentId, missionData.m_MissionId);
-                availableMissionList[slot].m_AgentIcon._visible = true;
-                availableMissionList[slot].m_AgentIcon.m_Success._visible = true;
-                availableMissionList[slot].m_AgentIcon.m_Success.m_Text.text = successChance + "%";
+                agentIcon._visible = true;
+                agentIcon.m_Success._visible = true;
+                agentIcon.m_Success.m_Text.text = successChance + "%";
+            }
+            else
+            {
+                agentIcon.m_Success._visible = false;
             }
             
             if (missionData && missionData.m_MissionId > 0)
-            {
-                _root.agentsystem.m_Window.m_Content.m_AvailableMissionList[slot].m_AgentIcon._visible = true;
-                
+            {                
                 var hours = String(Math.floor(missionData.m_ActiveDuration / 60 / 60));
                 if (hours.length == 1) hours = "0" + hours;
                 var minutes = String((missionData.m_ActiveDuration / 60) % 60);
                 if (minutes.length == 1) minutes = "0" + minutes;
                 
-                availableMissionList[slot].m_AgentIcon.m_Timer._visible = true;
-                availableMissionList[slot].m_AgentIcon.m_Timer.text = hours + ":" + minutes;
+                agentIcon.m_Timer._visible = true;
+                agentIcon.m_Timer.text = hours + ":" + minutes;
             }
+            else
+            {
+                agentIcon.m_Timer._visible = false;
+            }
+            
+            agentIcon._visible = agentIcon.m_Timer._visible || agentIcon.m_Success._visible;
         }
     }
     
     private function SlotAgentSelected()
     {
-        var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
-        if (availableMissionList)
-        {
-            FillMissionsOverride();
-        }
+        FillMissionsOverride();
+        _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(FillMissionsOverride, this);
     }
 }
