@@ -4,15 +4,13 @@ import com.GameInterface.AgentSystemMission;
 import com.GameInterface.AgentSystem;
 import com.Utils.Archive;
 import mx.utils.Delegate;
-
+import com.GameInterface.LoreBase;
 
 class com.xeio.AgentTweaks.AgentTweaks
 {    
     private var m_swfRoot: MovieClip;
 
     private var m_uiScale:DistributedValue;
-    
-    private var m_baseFillMissions:Function;
     
     private var m_timeout:Number;
 
@@ -54,6 +52,9 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
         
+        AgentSystem.SignalAvailableMissionsUpdated.Disconnect(UpdateMissionsDisplayWithDelay, this);
+        LoreBase.SignalTagAdded.Disconnect(UpdateMissionsDisplayWithDelay, this);
+        
         InitializeUI();
 	}
     
@@ -82,15 +83,21 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         content.m_MissionList.SignalEmptyMissionSelected.Connect(SlotEmptyMissionSelected, this);
         
+        AgentSystem.SignalAvailableMissionsUpdated.Connect(UpdateMissionsDisplayWithDelay, this);
+        LoreBase.SignalTagAdded.Connect(UpdateMissionsDisplayWithDelay, this);
+        
         content.m_Roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
         
-        InitializeAvailableMissionsListUI();
+        setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
+    }
+    
+    private function UpdateMissionsDisplayWithDelay()
+    {
+        setTimeout(Delegate.create(this, UpdateMissionsDisplay), 50);
     }
     
     private function SlotEmptyMissionSelected()
     {
-        m_baseFillMissions = undefined;
-        
         setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
     }
     
@@ -104,22 +111,7 @@ class com.xeio.AgentTweaks.AgentTweaks
             return;
         }
         
-        m_baseFillMissions = Delegate.create(availableMissionList, availableMissionList.FillMissions);
-        availableMissionList.FillMissions = Delegate.create(this, FillMissionsOverride);
-        
-        UpdateMissionsDisplay();
-    }
-    
-    private function FillMissionsOverride()
-    {
-        var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
-        
-        if (!availableMissionList)
-        {
-            return;
-        }
-        
-        m_baseFillMissions();
+        availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
         
         UpdateMissionsDisplay();
     }
