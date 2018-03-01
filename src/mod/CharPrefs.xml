@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?> 
+<Root>
+  <Value name="AgentTweaks" value="true" />
+  <Value name="AgentTweaks_UIScale" value="100" />
+  <Archive name="AgentTweaks_Cfg" />
+</Root>
