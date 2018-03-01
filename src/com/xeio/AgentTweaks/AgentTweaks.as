@@ -64,9 +64,8 @@ class com.xeio.AgentTweaks.AgentTweaks
     private function InitializeUI()
     {
         var content = _root.agentsystem.m_Window.m_Content;
-        var roster = content.m_Roster;
         
-        if (!_root.agentsystem.m_Window.m_Content.m_Roster)
+        if (!content.m_Roster || !content.m_MissionList)
         {
             setTimeout(Delegate.create(this, InitializeUI), 100);
             return;
@@ -76,9 +75,9 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         content.m_MissionList.SignalEmptyMissionSelected.Connect(SlotEmptyMissionSelected, this);
         
-        roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
+        content.m_Roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
         
-        InitializeAvailableMissionsListUI();        
+        InitializeAvailableMissionsListUI();
     }
     
     private function SlotEmptyMissionSelected()
@@ -118,7 +117,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         var agent:AgentSystemAgent = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData;
                 
         for(var i:Number = 0; i < 5; i++)
-		{
+        {
             var slot:String = "m_Slot_" + i;
             var agentIcon = availableMissionList[slot].m_AgentIcon;
             var missionData:AgentSystemMission = availableMissionList[slot].m_MissionData;
