@@ -61,6 +61,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     private function AgentStatusUpdated(agentData:AgentSystemAgent)
     {
         UpdateMissionsDisplay();
+        UpdateAgentDisplay(agentData);
     }
     
     public function SetUIScale()
@@ -146,7 +147,7 @@ class com.xeio.AgentTweaks.AgentTweaks
             }
             
             if (missionData && missionData.m_MissionId > 0)
-            {                
+            {
                 var hours = String(Math.floor(missionData.m_ActiveDuration / 60 / 60));
                 if (hours.length == 1) hours = "0" + hours;
                 var minutes = String((missionData.m_ActiveDuration / 60) % 60);
@@ -168,5 +169,39 @@ class com.xeio.AgentTweaks.AgentTweaks
     {
         UpdateMissionsDisplay();
         _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(UpdateMissionsDisplay, this);
+        UpdateAgentDisplay()
+    }
+    
+    private function UpdateAgentDisplay(agent:AgentSystemAgent)
+    {
+        var agentInfoSheet :MovieClip = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet;
+        if (!agentInfoSheet)
+        {
+            return;
+        }
+        
+        if (!agent)
+        {
+            agent = agentInfoSheet.m_AgentData;
+        }
+        
+        var healthField : TextField = agentInfoSheet.u_health;
+        if (!AgentSystem.IsAgentFatigued(agent.m_AgentId))
+        {
+            if (!healthField)
+            {
+                var m_Timer : TextField = agentInfoSheet.m_Timer;
+                healthField = agentInfoSheet.createTextField("u_health", agentInfoSheet.getNextHighestDepth(), m_Timer._x, m_Timer._y, m_Timer._width, m_Timer._height)
+                healthField.setNewTextFormat(m_Timer.getTextFormat())
+                healthField.embedFonts = true
+            }
+            
+            healthField._visible = true;
+            healthField.text = "Fatigue: " + (100 - agent.m_FatiguePercent) + "%";
+        }
+        else
+        {
+            healthField._visible = false;
+        }
     }
 }
