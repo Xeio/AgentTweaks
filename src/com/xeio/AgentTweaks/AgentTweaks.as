@@ -2,6 +2,8 @@ import com.GameInterface.DistributedValue;
 import com.GameInterface.AgentSystemAgent;
 import com.GameInterface.AgentSystemMission;
 import com.GameInterface.AgentSystem;
+import com.GameInterface.Game.Character;
+import com.GameInterface.Inventory;
 import com.Utils.Archive;
 import mx.utils.Delegate;
 import com.GameInterface.LoreBase;
@@ -90,6 +92,14 @@ class com.xeio.AgentTweaks.AgentTweaks
         content.m_Roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
         
         setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
+        
+        var inventoryPanel : MovieClip = content.m_InventoryPanel;
+        var removeAllButton = inventoryPanel.attachMovie("Final claim Reward States", "u_unequipAll", inventoryPanel.getNextHighestDepth());
+        removeAllButton._y -= 15;
+        removeAllButton._width = 160
+        removeAllButton.textField.text = "Get All Items";
+        removeAllButton.disableFocus = true
+        removeAllButton.addEventListener("click",this,"UnequipAll");
     }
     
     private function UpdateMissionsDisplayWithDelay()
@@ -202,6 +212,33 @@ class com.xeio.AgentTweaks.AgentTweaks
         else
         {
             healthField._visible = false;
+        }
+    }
+    
+    private function UnequipAll()
+    {
+        var agents = AgentSystem.GetAgents();
+        for (var i in agents)
+        {
+            var agent:AgentSystemAgent = agents[i];
+            if (!AgentSystem.IsAgentOnMission(agent.m_AgentId))
+            {
+                if(AgentSystem.GetItemOnAgent(agent.m_AgentId).m_Name)
+                {
+                    var agentInventory:Inventory = new Inventory(new com.Utils.ID32(_global.Enums.InvType.e_Type_GC_AgentEquipmentInventory, Character.GetClientCharID().GetInstance()));
+                    var firstFree:Number = agentInventory.GetFirstFreeItemSlot();
+                    if (firstFree != -1)
+                    {
+                        AgentSystem.UnequipItemOnAgent(agent.m_AgentId, agentInventory.GetInventoryID(), firstFree);
+                        setTimeout(Delegate.create(this, UnequipAll), 200)
+                        return;
+                    }
+                    else 
+                    {
+                        break;
+                    }
+                }
+            }
         }
     }
 }
