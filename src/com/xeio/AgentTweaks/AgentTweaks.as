@@ -5,6 +5,7 @@ import com.GameInterface.AgentSystem;
 import com.GameInterface.Game.Character;
 import com.GameInterface.Inventory;
 import com.Utils.Archive;
+import com.xeio.AgentTweaks.Utils;
 import mx.utils.Delegate;
 import com.GameInterface.LoreBase;
 
@@ -140,9 +141,12 @@ class com.xeio.AgentTweaks.AgentTweaks
                 
         for(var i:Number = 0; i < 5; i++)
         {
-            var slot:String = "m_Slot_" + i;
-            var agentIcon = availableMissionList[slot].m_AgentIcon;
-            var missionData:AgentSystemMission = availableMissionList[slot].m_MissionData;
+            var slotId:String = "m_Slot_" + i;
+            var slot:MovieClip = availableMissionList[slotId];
+            
+            var agentIcon = slot.m_AgentIcon;
+            var missionData:AgentSystemMission = slot.m_MissionData;
+            var bonusView = slot.m_BonusView;
             
             if (agent && missionData && missionData.m_MissionId > 0)
             {
@@ -150,10 +154,20 @@ class com.xeio.AgentTweaks.AgentTweaks
                 agentIcon._visible = true;
                 agentIcon.m_Success._visible = true;
                 agentIcon.m_Success.m_Text.text = successChance + "%";
+                
+                if (BonusIsMatch(agent, missionData))
+                {
+                    bonusView.m_Header.textColor = 0x00FF00
+                }
+                else
+                {
+                    bonusView.m_Header.textColor = 0xFFFFFF
+                }
             }
             else
             {
                 agentIcon.m_Success._visible = false;
+                bonusView.m_Header.textColor = 0xFFFFFF
             }
             
             if (missionData && missionData.m_MissionId > 0)
@@ -240,5 +254,26 @@ class com.xeio.AgentTweaks.AgentTweaks
                 }
             }
         }
+    }
+    
+    private function BonusIsMatch(agent:AgentSystemAgent, mission:AgentSystemMission) : Boolean
+    {
+        if (!mission.m_BonusTraitCategories || mission.m_BonusTraitCategories.length == 0)
+        {
+            return false;
+        }
+        
+        var agentOverrides = AgentSystem.GetAgentOverride(agent.m_AgentId);
+        
+        for (var i in mission.m_BonusTraitCategories)
+        {
+            var bonusTrait = mission.m_BonusTraitCategories[i];
+            if (bonusTrait != agent.m_Trait1Category && bonusTrait != agent.m_Trait2Category && bonusTrait != agentOverrides[3])
+            {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }
