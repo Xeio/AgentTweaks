@@ -2,5 +2,6 @@
 <Root>
   <Value name="AgentTweaks" value="true" />
   <Value name="AgentTweaks_UIScale" value="100" />
+    <Value name="AgentTweaks_DebugMode" value="false" />
   <Archive name="AgentTweaks_Cfg" />
 </Root>

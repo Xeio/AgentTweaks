@@ -102,15 +102,29 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         content.m_Roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
         
-        setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
-        
         var inventoryPanel : MovieClip = content.m_InventoryPanel;
         var removeAllButton = inventoryPanel.attachMovie("Final claim Reward States", "u_unequipAll", inventoryPanel.getNextHighestDepth());
         removeAllButton._y -= 15;
         removeAllButton._width = 160
         removeAllButton.textField.text = "Get All Items";
-        removeAllButton.disableFocus = true
-        removeAllButton.addEventListener("click",this,"UnequipAll");
+        removeAllButton.disableFocus = true;
+        removeAllButton.addEventListener("click", this, "UnequipAll");
+        
+        if (DistributedValueBase.GetDValue("AgentTweaks_DebugMode"))
+        {
+            var showMissionsButton = content.attachMovie("Final claim Reward States", "u_showMissions", content.getNextHighestDepth());
+            showMissionsButton._y = 700;
+            showMissionsButton._x = 50;
+            showMissionsButton._width = 160;
+            showMissionsButton.textField.text = "Show Missions";
+            showMissionsButton.disableFocus = true;
+            showMissionsButton.addEventListener("click", this, "ShowAvailableMissions");
+        }
+    }
+    
+    private function ShowAvailableMissions()
+    {
+        _root.agentsystem.m_Window.m_Content.m_MissionList.SignalEmptyMissionSelected.Emit();
     }
     
     private function SlotEmptyMissionSelected()
@@ -134,10 +148,10 @@ class com.xeio.AgentTweaks.AgentTweaks
             m_baseFillMissions.FillMissions = Delegate.create(this, FillMissionsOverride);
             availableMissionList.u_fillMissionsOverriden = true;
             
-            availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
+            availableMissionList.m_ButtonBar.addEventListener("change", this, "FillMissionsOverride");
         }
         
-        UpdateMissionsDisplay();
+        FillMissionsOverride();
     }
     
     private function FillMissionsOverride()
@@ -161,7 +175,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         {
             return;
         }
-                
+        
         var agent:AgentSystemAgent = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData;
                 
         for(var i:Number = 0; i < 5; i++)
@@ -200,17 +214,18 @@ class com.xeio.AgentTweaks.AgentTweaks
                 //Clear any items if they exist
                 slot["u_customItems" + j].removeMovieClip();
             }
-            if (!slot.u_bonusText && slot.m_Timer)
-            {
-                var m_Timer:TextField = slot.m_Timer;
-                var bonusText = slot.createTextField("u_bonusText", slot.getNextHighestDepth(), 0, slot.m_ActiveBG._height - 15, 100, 20);
-                bonusText.setNewTextFormat(m_Timer.getTextFormat());
-                bonusText.text = "Bonuses";
-                bonusText.embedFonts = true;
-            }
             
             if (missionData && missionData.m_MissionId > 0)
             {
+                if (!slot.u_bonusText)
+                {
+                    var m_Timer:TextField = slot.m_Timer;
+                    var bonusText = slot.createTextField("u_bonusText", slot.getNextHighestDepth(), 0, slot.m_ActiveBG._height - 15, 100, 20);
+                    bonusText.setNewTextFormat(m_Timer.getTextFormat());
+                    bonusText.text = "Bonuses";
+                    bonusText.embedFonts = true;
+                }
+                
                 var hours = String(Math.floor(missionData.m_ActiveDuration / 60 / 60));
                 if (hours.length == 1) hours = "0" + hours;
                 var minutes = String((missionData.m_ActiveDuration / 60) % 60);
@@ -278,7 +293,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     {
         UpdateMissionsDisplay();
         _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(UpdateMissionsDisplay, this);
-        UpdateAgentDisplay()
+        UpdateAgentDisplay();
     }
     
     private function UpdateAgentDisplay(agent:AgentSystemAgent)
@@ -302,7 +317,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                 var m_Timer : TextField = agentInfoSheet.m_Timer;
                 healthField = agentInfoSheet.createTextField("u_health", agentInfoSheet.getNextHighestDepth(), m_Timer._x, m_Timer._y, m_Timer._width, m_Timer._height)
                 healthField.setNewTextFormat(m_Timer.getTextFormat())
-                healthField.embedFonts = true
+                healthField.embedFonts = true;
             }
             
             healthField._visible = true;
