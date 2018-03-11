@@ -71,12 +71,18 @@ class com.xeio.AgentTweaks.AgentTweaks
         InitializeUI();
 	}
     
+    private var lastProcessedAgentUpdate = 0;
     private function AgentStatusUpdated(agentData:AgentSystemAgent)
     {
         if (_root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData.m_AgentId == agentData.m_AgentId)
         {
-            UpdateMissionsDisplay();
-            UpdateAgentDisplay(agentData);
+            if (lastProcessedAgentUpdate + 80 <= (new Date()).valueOf())
+            {
+                //Workaround for the agent signal spamming the client, only process these events every 80ms
+                UpdateMissionsDisplay();
+                UpdateAgentDisplay(agentData);
+                lastProcessedAgentUpdate = (new Date()).valueOf();
+            }
         }
     }
     
