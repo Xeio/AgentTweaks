@@ -1,11 +1,15 @@
+import com.Components.InventoryItemList.MCLItemIconCellRenderer;
 import com.GameInterface.DistributedValue;
+import com.GameInterface.DistributedValueBase;
 import com.GameInterface.AgentSystemAgent;
 import com.GameInterface.AgentSystemMission;
 import com.GameInterface.AgentSystem;
 import com.GameInterface.Game.Character;
 import com.GameInterface.Inventory;
+import com.GameInterface.InventoryItem;
 import com.Utils.Archive;
 import com.xeio.AgentTweaks.Utils;
+import com.Utils.LDBFormat;
 import mx.utils.Delegate;
 import com.GameInterface.LoreBase;
 
@@ -16,6 +20,11 @@ class com.xeio.AgentTweaks.AgentTweaks
     private var m_uiScale:DistributedValue;
     
     private var m_timeout:Number;
+    
+    static var GEAR_BAG:String = LDBFormat.LDBGetText(50200, 9405788);
+    static var HEIGHT:Number = 20;
+    
+    var m_baseFillMissions:Function;
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -34,10 +43,14 @@ class com.xeio.AgentTweaks.AgentTweaks
 
     public function OnUnload()
     {
-        m_uiScale.SignalChanged.Disconnect(SetUIScale, this);
+        AgentSystem.SignalAgentStatusUpdated.Disconnect(AgentStatusUpdated, this);
+        m_uiScale.SignalChanged.Disconnect(SetUIScale, this);        
         m_uiScale = undefined;
+        //In the off chance it's just this add-on unloading, close the whole agent system too so our events don't break things
+        DistributedValueBase.SetDValue("agentSystem_window", false);
     }
-
+    
+    
     public function Activate(config: Archive)
     {
     }
@@ -55,16 +68,16 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
         
-        AgentSystem.SignalAvailableMissionsUpdated.Disconnect(UpdateMissionsDisplayWithDelay, this);
-        LoreBase.SignalTagAdded.Disconnect(UpdateMissionsDisplayWithDelay, this);
-        
         InitializeUI();
 	}
     
     private function AgentStatusUpdated(agentData:AgentSystemAgent)
     {
-        UpdateMissionsDisplay();
-        UpdateAgentDisplay(agentData);
+        if (_root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData.m_AgentId == agentData.m_AgentId)
+        {
+            UpdateMissionsDisplay();
+            UpdateAgentDisplay(agentData);
+        }
     }
     
     public function SetUIScale()
@@ -87,9 +100,6 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         content.m_MissionList.SignalEmptyMissionSelected.Connect(SlotEmptyMissionSelected, this);
         
-        AgentSystem.SignalAvailableMissionsUpdated.Connect(UpdateMissionsDisplayWithDelay, this);
-        LoreBase.SignalTagAdded.Connect(UpdateMissionsDisplayWithDelay, this);
-        
         content.m_Roster.SignalAgentSelected.Connect(SlotAgentSelected, this);
         
         setTimeout(Delegate.create(this, InitializeAvailableMissionsListUI), 100);
@@ -101,11 +111,6 @@ class com.xeio.AgentTweaks.AgentTweaks
         removeAllButton.textField.text = "Get All Items";
         removeAllButton.disableFocus = true
         removeAllButton.addEventListener("click",this,"UnequipAll");
-    }
-    
-    private function UpdateMissionsDisplayWithDelay()
-    {
-        setTimeout(Delegate.create(this, UpdateMissionsDisplay), 50);
     }
     
     private function SlotEmptyMissionSelected()
@@ -123,7 +128,27 @@ class com.xeio.AgentTweaks.AgentTweaks
             return;
         }
         
-        availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
+        if (!availableMissionList.u_fillMissionsOverriden)
+        {
+            m_baseFillMissions = Delegate.create(availableMissionList, availableMissionList.FillMissions);
+            m_baseFillMissions.FillMissions = Delegate.create(this, FillMissionsOverride);
+            availableMissionList.u_fillMissionsOverriden = true;
+            
+            availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
+        }
+        
+        UpdateMissionsDisplay();
+    }
+    
+    private function FillMissionsOverride()
+    {
+        if (!_root.agentsystem.m_Window.m_Content.m_AvailableMissionList)
+        {
+            m_baseFillMissions = undefined;
+            return;
+        }
+        
+        m_baseFillMissions();
         
         UpdateMissionsDisplay();
     }
@@ -136,7 +161,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         {
             return;
         }
-        
+                
         var agent:AgentSystemAgent = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData;
                 
         for(var i:Number = 0; i < 5; i++)
@@ -170,6 +195,20 @@ class com.xeio.AgentTweaks.AgentTweaks
                 bonusView.m_Header.textColor = 0xFFFFFF
             }
             
+            for (var j = 0; j <= 10; j++)
+            {
+                //Clear any items if they exist
+                slot["u_customItems" + j].removeMovieClip();
+            }
+            if (!slot.u_bonusText && slot.m_Timer)
+            {
+                var m_Timer:TextField = slot.m_Timer;
+                var bonusText = slot.createTextField("u_bonusText", slot.getNextHighestDepth(), 0, slot.m_ActiveBG._height - 15, 100, 20);
+                bonusText.setNewTextFormat(m_Timer.getTextFormat());
+                bonusText.text = "Bonuses";
+                bonusText.embedFonts = true;
+            }
+            
             if (missionData && missionData.m_MissionId > 0)
             {
                 var hours = String(Math.floor(missionData.m_ActiveDuration / 60 / 60));
@@ -179,10 +218,56 @@ class com.xeio.AgentTweaks.AgentTweaks
                 
                 agentIcon.m_Timer._visible = true;
                 agentIcon.m_Timer.text = hours + ":" + minutes;
+                
+                var customItemCount = 0;
+                var normal = 0;
+                var bonus = 0;
+                for (var r in missionData.m_Rewards)
+                {
+                    var item:InventoryItem = Inventory.CreateACGItemFromTemplate(missionData.m_Rewards[r], 0, 0, 1);
+                    if(IsImportant(item))
+                    {
+                        var newItem = slot.attachMovie("IconSlot", "u_customItems" + customItemCount, slot.getNextHighestDepth());
+                        newItem._height = newItem._width = HEIGHT;
+                        newItem._y = slot.m_ActiveBG._height - newItem._height - 5;
+                        newItem._x = 120 + (HEIGHT + 5) * normal;
+                        var itemslot = new _global.com.Components.ItemSlot(undefined, 0, newItem);
+                        itemslot.SetData(item);
+                        
+                        customItemCount++;
+                        normal++;
+                    }
+                }
+                for (var r in missionData.m_BonusRewards)
+                {
+                    var item:InventoryItem = Inventory.CreateACGItemFromTemplate(missionData.m_BonusRewards[r], 0, 0, 1);
+                    if(IsImportant(item))
+                    {
+                        var newItem = slot.attachMovie("IconSlot", "u_customItems" + customItemCount, slot.getNextHighestDepth());
+                        newItem._height = newItem._width = HEIGHT;
+                        newItem._y = slot.m_ActiveBG._height - HEIGHT - 5;
+                        newItem._x = 390 - (HEIGHT + 5) * bonus;
+                        var itemslot = new _global.com.Components.ItemSlot(undefined, 0, newItem);
+                        itemslot.SetData(item);
+                        
+                        customItemCount++;
+                        bonus++;
+                    }
+                }
+                if (bonus > 0)
+                {
+                    slot.u_bonusText._x = 390 - (HEIGHT + 5) * bonus - 50;
+                    slot.u_bonusText._visible = true;
+                }
+                else
+                {
+                    slot.u_bonusText._visible = false;
+                }
             }
             else
             {
                 agentIcon.m_Timer._visible = false;
+                slot.u_bonusText._visible = false;
             }
             
             agentIcon._visible = agentIcon.m_Timer._visible || agentIcon.m_Success._visible;
@@ -274,6 +359,23 @@ class com.xeio.AgentTweaks.AgentTweaks
             }
         }
         
+        return true;
+    }
+    
+    private function IsImportant(item:InventoryItem)
+    {
+        if (item.m_Name.indexOf("stillat") != -1 && (item.m_Name.indexOf("cc)") != -1 || item.m_Name.indexOf("cm3)") != -1))
+        {
+            //Distillates
+            return false;
+        }
+        if (item.m_Name.indexOf("Anima Shards") != -1 || item.m_Name.indexOf("Anima-Splitter") != -1 || item.m_Name.indexOf("Anima-Splitter") != -1)
+        {
+            //Anima shards
+            return false;
+        }
+        
+        //Any uncategorized items are important (known items like Dossiers and Gear bags)
         return true;
     }
 }
