@@ -23,8 +23,6 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     static var GEAR_BAG:String = LDBFormat.LDBGetText(50200, 9405788);
     static var HEIGHT:Number = 20;
-    
-    var m_baseFillMissions:Function;
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -44,6 +42,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     public function OnUnload()
     {
         AgentSystem.SignalAgentStatusUpdated.Disconnect(AgentStatusUpdated, this);
+        AgentSystem.SignalAvailableMissionsUpdated.Disconnect(AvailableMissionsUpdated, this);
         m_uiScale.SignalChanged.Disconnect(SetUIScale, this);        
         m_uiScale = undefined;
         //In the off chance it's just this add-on unloading, close the whole agent system too so our events don't break things
@@ -67,6 +66,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         m_uiScale.SignalChanged.Connect(SetUIScale, this);
         
         AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
+        AgentSystem.SignalAvailableMissionsUpdated.Connect(AvailableMissionsUpdated, this);
         
         InitializeUI();
 	}
@@ -148,30 +148,33 @@ class com.xeio.AgentTweaks.AgentTweaks
             return;
         }
         
-        if (!availableMissionList.u_fillMissionsOverriden)
+        if (!availableMissionList.u_customHooksInitialized)
         {
-            m_baseFillMissions = Delegate.create(availableMissionList, availableMissionList.FillMissions);
-            m_baseFillMissions.FillMissions = Delegate.create(this, FillMissionsOverride);
-            availableMissionList.u_fillMissionsOverriden = true;
+            availableMissionList.u_customHooksInitialized = true;
             
-            availableMissionList.m_ButtonBar.addEventListener("change", this, "FillMissionsOverride");
+            availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
+            
+            AgentSystem.SignalAvailableMissionsUpdated.Disconnect(availableMissionList.SlotAvailableMissionsUpdated, availableMissionList);
         }
-        
-        FillMissionsOverride();
-    }
-    
-    private function FillMissionsOverride()
-    {
-        if (!_root.agentsystem.m_Window.m_Content.m_AvailableMissionList)
-        {
-            m_baseFillMissions = undefined;
-            return;
-        }
-        
-        m_baseFillMissions();
         
         UpdateMissionsDisplay();
     }
+    
+    private function AvailableMissionsUpdated(starRating:Number)
+	{
+        var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
+        if (!availableMissionList)
+        {
+            return;
+        }
+        
+        availableMissionList.SlotAvailableMissionsUpdated(starRating);
+        
+		if (starRating == 0 || starRating == _root.agentsystem.m_Window.m_Content.m_AvailableMissionList.m_TabIndex + 1)
+		{
+		    UpdateMissionsDisplay();
+		}
+	}
     
     private function UpdateMissionsDisplay()
     {
