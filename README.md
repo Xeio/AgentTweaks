@@ -8,6 +8,10 @@ Adds time to complete to the overall available missions list. If an agent is sel
 
 Adds a "Get All Items" button to the inventory to uneqip all items from your agents.
 
+Shows interesting items (non-distillate, non-shard) rewards on the available missions page.
+
+Highlights matching bonuses.
+
 Displays agent fatigue %.
 
-![UI Preview](https://i.imgur.com/uRg0O7E.png)
+![UI Preview](https://i.imgur.com/BczIEBf.png)
