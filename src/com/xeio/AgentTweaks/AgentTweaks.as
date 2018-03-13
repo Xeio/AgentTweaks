@@ -1,4 +1,3 @@
-import com.Components.InventoryItemList.MCLItemIconCellRenderer;
 import com.GameInterface.DistributedValue;
 import com.GameInterface.DistributedValueBase;
 import com.GameInterface.AgentSystemAgent;
@@ -8,10 +7,9 @@ import com.GameInterface.Game.Character;
 import com.GameInterface.Inventory;
 import com.GameInterface.InventoryItem;
 import com.Utils.Archive;
-import com.xeio.AgentTweaks.Utils;
+import com.Utils.Colors;
 import com.Utils.LDBFormat;
 import mx.utils.Delegate;
-import com.GameInterface.LoreBase;
 
 class com.xeio.AgentTweaks.AgentTweaks
 {    
@@ -211,9 +209,13 @@ class com.xeio.AgentTweaks.AgentTweaks
                 {
                     bonusView.m_Header.textColor = 0xFFFFFF
                 }
+                
+                var missionOverride = AgentSystem.GetMissionOverride(missionData.m_MissionId, agent.m_AgentId);
+                UpdateRewards(slot, missionData, missionOverride);
             }
             else
             {
+                UpdateRewards(slot, missionData, missionData);
                 agentIcon.m_Success._visible = false;
                 bonusView.m_Header.textColor = 0xFFFFFF
             }
@@ -401,5 +403,68 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         //Any uncategorized items are important (known items like Dossiers and Gear bags)
         return true;
+    }
+    
+    private function UpdateRewards(slot:MovieClip, mission:AgentSystemMission, missionOverride:AgentSystemMission)
+    {
+        var currencyFields = slot.m_Currency;
+        
+        var originalIntel = mission.m_IntelReward - mission.m_IntelCost;
+        var intel = missionOverride.m_IntelReward - missionOverride.m_IntelCost;
+        currencyFields.m_Intel.text = (intel > 0 ? "+" : "") + intel;
+        if (originalIntel < intel)
+        {
+            currencyFields.m_Intel.textColor = Colors.e_ColorLightGreen;
+        }
+        else if (originalIntel > intel)
+        {
+            currencyFields.m_Intel.textColor = Colors.e_ColorPureRed;
+        }
+        else
+        {
+            currencyFields.m_Intel.textColor = Colors.e_ColorWhite;
+        }
+        
+        var originalSupplies = mission.m_SuppliesReward - mission.m_SuppliesCost;
+        var supplies = missionOverride.m_SuppliesReward - missionOverride.m_SuppliesCost;
+        currencyFields.m_Supplies.text = (supplies > 0 ? "+" : "") + supplies;
+        if (originalSupplies < supplies)
+        {
+            currencyFields.m_Supplies.textColor = Colors.e_ColorLightGreen;
+        }
+        else if (originalSupplies > supplies)
+        {
+            currencyFields.m_Supplies.textColor = Colors.e_ColorPureRed;
+        }
+        else
+        {
+            currencyFields.m_Supplies.textColor = Colors.e_ColorWhite;
+        }
+        
+        var originalAssets = mission.m_AssetsReward - mission.m_AssetsCost;
+        var assets = missionOverride.m_AssetsReward - missionOverride.m_AssetsCost;
+        currencyFields.m_Assets.text = (assets > 0 ? "+" : "") + assets;
+        if (originalAssets < assets)
+        {
+            currencyFields.m_Assets.textColor = Colors.e_ColorLightGreen;
+        }
+        else if (originalAssets > assets)
+        {
+            currencyFields.m_Assets.textColor = Colors.e_ColorPureRed;
+        }
+        else
+        {
+            currencyFields.m_Assets.textColor = Colors.e_ColorWhite;
+        }
+        
+        currencyFields.m_XP.text = missionOverride.m_XPReward;
+        if (missionOverride.m_XPReward > mission.m_XPReward)
+        {
+            currencyFields.m_XP.textColor = Colors.e_ColorLightGreen;
+        }
+        else
+        {
+            currencyFields.m_XP.textColor = Colors.e_ColorWhite;
+        }
     }
 }
