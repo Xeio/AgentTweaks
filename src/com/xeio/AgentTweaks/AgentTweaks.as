@@ -21,6 +21,10 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     static var GEAR_BAG:String = LDBFormat.LDBGetText(50200, 9405788);
     static var HEIGHT:Number = 20;
+    
+    private static var MATCH_NONE = 0;
+    private static var MATCH_PARTIAL = 1;
+    private static var MATCH_FULL = 2;
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -153,9 +157,28 @@ class com.xeio.AgentTweaks.AgentTweaks
             availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
             
             AgentSystem.SignalAvailableMissionsUpdated.Disconnect(availableMissionList.SlotAvailableMissionsUpdated, availableMissionList);
+            
+            availableMissionList.SignalMissionSelected.Connect(InitializeMissionDetailUI, this);
         }
         
-        UpdateMissionsDisplay();
+        UpdateMissionsDisplay();        
+    }
+    
+    private function InitializeMissionDetailUI()
+    {
+        var missionDetail = _root.agentsystem.m_Window.m_Content.m_MissionDetail;
+        
+        if (!missionDetail)
+        {
+            setTimeout(Delegate.create(this, InitializeMissionDetailUI), 100);
+            return;
+        }
+        
+        missionDetail.SignalClose.Connect(ClearMatches, this);
+        
+        var mission = missionDetail.m_MissionData;
+        
+        HighlightMatchingBonuses(mission);
     }
     
     private function AvailableMissionsUpdated(starRating:Number)
@@ -374,12 +397,10 @@ class com.xeio.AgentTweaks.AgentTweaks
             return false;
         }
         
-        var agentOverrides = AgentSystem.GetAgentOverride(agent.m_AgentId);
-        
         for (var i in mission.m_BonusTraitCategories)
         {
             var bonusTrait = mission.m_BonusTraitCategories[i];
-            if (bonusTrait != agent.m_Trait1Category && bonusTrait != agent.m_Trait2Category && bonusTrait != agentOverrides[3])
+            if(!AgentHasTrait(agent, bonusTrait))
             {
                 return false;
             }
@@ -466,5 +487,116 @@ class com.xeio.AgentTweaks.AgentTweaks
         {
             currencyFields.m_XP.textColor = Colors.e_ColorWhite;
         }
+    }
+    
+    private function ClearMatches()
+    {
+        var roster = _root.agentsystem.m_Window.m_Content.m_Roster;
+        for (var i = 1; i <= 16; i++)
+        {
+            var rosterIcon = roster["Icon_" + i];
+            var agent:AgentSystemAgent = rosterIcon.data;
+            var traitPanel = rosterIcon.m_TraitCategories;
+            
+            for (var t = 0; t < 6; t++)
+            {
+                traitPanel["u_traitbox" + t].removeMovieClip();
+            }
+        }
+    }
+    
+    private function HighlightMatchingBonuses(mission:AgentSystemMission)
+    {
+        ClearMatches();
+        
+        var roster = _root.agentsystem.m_Window.m_Content.m_Roster;
+        for (var i = 1; i <= 16; i++)
+        {
+            var rosterIcon = roster["Icon_" + i];
+            var agent:AgentSystemAgent = rosterIcon.data;
+            var traitPanel = rosterIcon.m_TraitCategories;
+            
+            var matchStatus = GetTraitMatchStatus(mission, agent);
+            if (matchStatus == MATCH_NONE)
+            {
+                continue;
+            }
+            //Otherwise partial or full match
+            
+            for (var t in mission.m_BonusTraitCategories)
+            {
+                var bonusTrait = mission.m_BonusTraitCategories[t];
+                
+                if (AgentHasTrait(agent, bonusTrait))
+                {
+                    var color = matchStatus == MATCH_FULL ? Colors.e_ColorPureGreen : Colors.e_ColorPureYellow;
+                    DrawBoxAroundTrait(traitPanel, TraitToIndex(bonusTrait), color);
+                }
+                else
+                {
+                    DrawBoxAroundTrait(traitPanel, TraitToIndex(bonusTrait), Colors.e_ColorPureRed);
+                }
+            }
+        }
+    }
+    
+    private function DrawBoxAroundTrait(traitPanel:MovieClip, boxIndex: Number, color:Number)
+    {
+        var overlay = traitPanel.createEmptyMovieClip("u_traitbox" + boxIndex, traitPanel.getNextHighestDepth());
+        var X_OFFSET = -2.5;
+        var Y_OFFSET = -4 + boxIndex;
+        var HEIGHT = 17.9;
+        var WIDTH = 19;
+        overlay.lineStyle(2, color);
+        overlay.moveTo(X_OFFSET,         Y_OFFSET + HEIGHT * boxIndex);
+        overlay.lineTo(X_OFFSET + WIDTH, Y_OFFSET + HEIGHT * boxIndex);
+        overlay.lineTo(X_OFFSET + WIDTH, Y_OFFSET + HEIGHT + HEIGHT * boxIndex);
+        overlay.lineTo(X_OFFSET,         Y_OFFSET + HEIGHT + HEIGHT * boxIndex);
+        overlay.lineTo(X_OFFSET,         Y_OFFSET + HEIGHT * boxIndex);
+    }
+    
+    private function GetTraitMatchStatus(mission:AgentSystemMission, agent:AgentSystemAgent) : Number
+    {
+        if (!mission.m_BonusTraitCategories || mission.m_BonusTraitCategories.length == 0)
+        {
+            return MATCH_NONE;
+        }
+        
+        var matchedTraits = 0;
+        for (var i in mission.m_BonusTraitCategories)
+        {
+            var bonusTrait = mission.m_BonusTraitCategories[i];
+            if (AgentHasTrait(agent, bonusTrait))
+            {
+                matchedTraits++;
+            }
+        }
+        
+        if (matchedTraits == mission.m_BonusTraitCategories.length)
+        {
+            return MATCH_FULL;
+        }
+        if (mission.m_BonusTraitCategories.length > 1 && matchedTraits == mission.m_BonusTraitCategories.length - 1)
+        {
+            return MATCH_PARTIAL;
+        }
+        return MATCH_NONE;
+    }
+    
+    private function AgentHasTrait(agent:AgentSystemAgent, trait:Number) :Boolean
+    {
+        var agentOverrides = AgentSystem.GetAgentOverride(agent.m_AgentId);
+        return trait == agent.m_Trait1Category || trait == agent.m_Trait2Category || trait == agentOverrides[3];
+    }
+    
+    private function TraitToIndex(bonusTrait:Number) : Number
+    {
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_POWER) return 0;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_RESILIENCE) return 1;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_CHARISMA) return 2;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_DEXTERITY) return 3;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_SUPERNATURAL) return 4;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_INTELLIGENCE) return 5;
+        return 0;
     }
 }
