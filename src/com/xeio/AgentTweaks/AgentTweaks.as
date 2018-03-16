@@ -45,6 +45,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     {
         AgentSystem.SignalAgentStatusUpdated.Disconnect(AgentStatusUpdated, this);
         AgentSystem.SignalAvailableMissionsUpdated.Disconnect(AvailableMissionsUpdated, this);
+        AgentSystem.SignalMissionCompleted.Disconnect(MissionCompleted, this);
         m_uiScale.SignalChanged.Disconnect(SetUIScale, this);        
         m_uiScale = undefined;
         //In the off chance it's just this add-on unloading, close the whole agent system too so our events don't break things
@@ -69,23 +70,23 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
         AgentSystem.SignalAvailableMissionsUpdated.Connect(AvailableMissionsUpdated, this);
+        AgentSystem.SignalMissionCompleted.Connect(MissionCompleted, this);
         
         InitializeUI();
 	}
     
-    private var lastProcessedAgentUpdate = 0;
     private function AgentStatusUpdated(agentData:AgentSystemAgent)
     {
         if (_root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.m_AgentData.m_AgentId == agentData.m_AgentId)
         {
-            if (lastProcessedAgentUpdate + 80 <= (new Date()).valueOf())
-            {
-                //Workaround for the agent signal spamming the client, only process these events every 80ms
-                UpdateMissionsDisplay();
-                UpdateAgentDisplay(agentData);
-                lastProcessedAgentUpdate = (new Date()).valueOf();
-            }
+            ScheduleMissionDisplayUpdate();
+            UpdateAgentDisplay(agentData);
         }
+    }
+    
+    private function MissionCompleted()
+    {
+        ScheduleMissionDisplayUpdate();
     }
     
     public function SetUIScale()
@@ -154,14 +155,14 @@ class com.xeio.AgentTweaks.AgentTweaks
         {
             availableMissionList.u_customHooksInitialized = true;
             
-            availableMissionList.m_ButtonBar.addEventListener("change", this, "UpdateMissionsDisplay");
+            availableMissionList.m_ButtonBar.addEventListener("change", this, "ScheduleMissionDisplayUpdate");
             
             AgentSystem.SignalAvailableMissionsUpdated.Disconnect(availableMissionList.SlotAvailableMissionsUpdated, availableMissionList);
             
             availableMissionList.SignalMissionSelected.Connect(InitializeMissionDetailUI, this);
         }
         
-        UpdateMissionsDisplay();        
+        ScheduleMissionDisplayUpdate();        
     }
     
     private function InitializeMissionDetailUI()
@@ -193,12 +194,23 @@ class com.xeio.AgentTweaks.AgentTweaks
         
 		if (starRating == 0 || starRating == _root.agentsystem.m_Window.m_Content.m_AvailableMissionList.m_TabIndex + 1)
 		{
-		    UpdateMissionsDisplay();
+		    ScheduleMissionDisplayUpdate();
 		}
 	}
     
+    private function ScheduleMissionDisplayUpdate()
+    {
+        if (!m_timeout)
+        {
+            //Prevent the UI from updating too often, or our item icon boxes will become invalid
+            m_timeout = setTimeout(Delegate.create(this, UpdateMissionsDisplay), 20);
+        }
+    }
+    
     private function UpdateMissionsDisplay()
     {
+        m_timeout = undefined;
+        
         var availableMissionList = _root.agentsystem.m_Window.m_Content.m_AvailableMissionList;
         
         if (!availableMissionList)
@@ -325,8 +337,8 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function SlotAgentSelected()
     {
-        UpdateMissionsDisplay();
-        _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(UpdateMissionsDisplay, this);
+        ScheduleMissionDisplayUpdate();
+        _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(ScheduleMissionDisplayUpdate, this);
         UpdateAgentDisplay();
     }
     
