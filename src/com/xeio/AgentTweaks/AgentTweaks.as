@@ -25,6 +25,15 @@ class com.xeio.AgentTweaks.AgentTweaks
     private static var MATCH_NONE = 0;
     private static var MATCH_PARTIAL = 1;
     private static var MATCH_FULL = 2;
+    
+    static var CHARISMA_ITEM:String = LDBFormat.LDBGetText(50200, 9399665);
+    static var POWER_ITEM:String = LDBFormat.LDBGetText(50200, 9399667);
+    static var INTELLIGENCE_ITEM:String = LDBFormat.LDBGetText(50200, 9399669);
+    static var DEXTERITY_ITEM:String = LDBFormat.LDBGetText(50200, 9399671);
+    static var SUPERNATURAL_ITEM:String = LDBFormat.LDBGetText(50200, 9399673);
+    static var RESILIENCE_ITEM:String = LDBFormat.LDBGetText(50200, 9399675);
+    
+    var m_agentInventory:Inventory;
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -71,6 +80,8 @@ class com.xeio.AgentTweaks.AgentTweaks
         AgentSystem.SignalAgentStatusUpdated.Connect(AgentStatusUpdated, this);
         AgentSystem.SignalAvailableMissionsUpdated.Connect(AvailableMissionsUpdated, this);
         AgentSystem.SignalMissionCompleted.Connect(MissionCompleted, this);
+        
+        m_agentInventory = new Inventory(new com.Utils.ID32(_global.Enums.InvType.e_Type_GC_AgentEquipmentInventory, Character.GetClientCharID().GetInstance()));
         
         InitializeUI();
 	}
@@ -385,11 +396,10 @@ class com.xeio.AgentTweaks.AgentTweaks
             {
                 if(AgentSystem.GetItemOnAgent(agent.m_AgentId).m_Name)
                 {
-                    var agentInventory:Inventory = new Inventory(new com.Utils.ID32(_global.Enums.InvType.e_Type_GC_AgentEquipmentInventory, Character.GetClientCharID().GetInstance()));
-                    var firstFree:Number = agentInventory.GetFirstFreeItemSlot();
+                    var firstFree:Number = m_agentInventory.GetFirstFreeItemSlot();
                     if (firstFree != -1)
                     {
-                        AgentSystem.UnequipItemOnAgent(agent.m_AgentId, agentInventory.GetInventoryID(), firstFree);
+                        AgentSystem.UnequipItemOnAgent(agent.m_AgentId, m_agentInventory.GetInventoryID(), firstFree);
                         setTimeout(Delegate.create(this, UnequipAll), 200)
                         return;
                     }
@@ -574,13 +584,18 @@ class com.xeio.AgentTweaks.AgentTweaks
             return MATCH_NONE;
         }
         
-        var matchedTraits = 0;
+        var matchedTraits:Number = 0;
+        var missingTrait:Number = 0;
         for (var i in mission.m_BonusTraitCategories)
         {
             var bonusTrait = mission.m_BonusTraitCategories[i];
             if (AgentHasTrait(agent, bonusTrait))
             {
                 matchedTraits++;
+            }
+            else
+            {
+                missingTrait = bonusTrait;
             }
         }
         
@@ -590,7 +605,10 @@ class com.xeio.AgentTweaks.AgentTweaks
         }
         if (mission.m_BonusTraitCategories.length > 1 && matchedTraits == mission.m_BonusTraitCategories.length - 1)
         {
-            return MATCH_PARTIAL;
+            if (HasTraitItem(missingTrait))
+            {
+                return MATCH_PARTIAL;
+            }
         }
         return MATCH_NONE;
     }
@@ -610,5 +628,26 @@ class com.xeio.AgentTweaks.AgentTweaks
         if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_SUPERNATURAL) return 4;
         if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_INTELLIGENCE) return 5;
         return 0;
+    }
+    
+    private function HasTraitItem(bonusTrait:Number)
+    {
+        var itemName:String = "NOITEM";
+        
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_POWER) itemName = POWER_ITEM;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_RESILIENCE) itemName = RESILIENCE_ITEM;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_CHARISMA) itemName = CHARISMA_ITEM;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_DEXTERITY) itemName = DEXTERITY_ITEM;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_SUPERNATURAL) itemName = SUPERNATURAL_ITEM;
+        if (bonusTrait == _global.GUI.AgentSystem.SettingsPanel.TRAIT_CAT_INTELLIGENCE) itemName = INTELLIGENCE_ITEM;
+        
+        for (var i = 0; i < m_agentInventory.GetMaxItems(); i++)
+        {
+            var item:InventoryItem = m_agentInventory.GetItemAt(i);
+            if (item && item.m_Name == itemName)
+            {
+                return true;
+            }
+        }
     }
 }
