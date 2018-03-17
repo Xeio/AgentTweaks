@@ -187,6 +187,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         }
         
         missionDetail.SignalClose.Connect(ClearMatches, this);
+        missionDetail.SignalStartMission.Connect(ClearMatches, this);
         
         var mission = missionDetail.m_MissionData;
         
