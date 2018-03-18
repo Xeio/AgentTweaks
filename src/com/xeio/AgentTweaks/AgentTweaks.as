@@ -140,6 +140,9 @@ class com.xeio.AgentTweaks.AgentTweaks
             showMissionsButton.disableFocus = true;
             showMissionsButton.addEventListener("click", this, "ShowAvailableMissions");
         }
+        
+        content.m_Roster.m_PrevButton.addEventListener("click", this, "HighlightMatchingBonuses");
+		content.m_Roster.m_NextButton.addEventListener("click", this, "HighlightMatchingBonuses");
     }
     
     private function ShowAvailableMissions()
@@ -189,9 +192,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         missionDetail.SignalClose.Connect(ClearMatches, this);
         missionDetail.SignalStartMission.Connect(ClearMatches, this);
         
-        var mission = missionDetail.m_MissionData;
-        
-        HighlightMatchingBonuses(mission);
+        HighlightMatchingBonuses();
     }
     
     private function AvailableMissionsUpdated(starRating:Number)
@@ -528,8 +529,16 @@ class com.xeio.AgentTweaks.AgentTweaks
         }
     }
     
-    private function HighlightMatchingBonuses(mission:AgentSystemMission)
+    private function HighlightMatchingBonuses()
     {
+        var missionDetail = _root.agentsystem.m_Window.m_Content.m_MissionDetail;
+        var mission = missionDetail.m_MissionData;
+        
+        if (!mission)
+        {
+            return;
+        }        
+        
         ClearMatches();
         
         var roster = _root.agentsystem.m_Window.m_Content.m_Roster;
