@@ -260,10 +260,12 @@ class com.xeio.AgentTweaks.AgentTweaks
                 
                 var missionOverride = AgentSystem.GetMissionOverride(missionData.m_MissionId, agent.m_AgentId);
                 UpdateRewards(slot, missionData, missionOverride);
+                SetMissionSlotTimer(slot, missionData, missionOverride);
             }
-            else
+            else if(missionData && missionData.m_MissionId > 0)
             {
                 UpdateRewards(slot, missionData, missionData);
+                SetMissionSlotTimer(slot, missionData, missionData);
                 agentIcon.m_Success._visible = false;
                 bonusView.m_Header.textColor = 0xFFFFFF
             }
@@ -284,14 +286,6 @@ class com.xeio.AgentTweaks.AgentTweaks
                     bonusText.text = "Bonuses";
                     bonusText.embedFonts = true;
                 }
-                
-                var hours = String(Math.floor(missionData.m_ActiveDuration / 60 / 60));
-                if (hours.length == 1) hours = "0" + hours;
-                var minutes = String((missionData.m_ActiveDuration / 60) % 60);
-                if (minutes.length == 1) minutes = "0" + minutes;
-                
-                agentIcon.m_Timer._visible = true;
-                agentIcon.m_Timer.text = hours + ":" + minutes;
                 
                 var customItemCount = 0;
                 var normal = 0;
@@ -353,6 +347,32 @@ class com.xeio.AgentTweaks.AgentTweaks
         ScheduleMissionDisplayUpdate();
         _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet.SignalClose.Connect(ScheduleMissionDisplayUpdate, this);
         UpdateAgentDisplay();
+    }
+    
+    private function SetMissionSlotTimer(slot:MovieClip, missionData:AgentSystemMission, missionOverride:AgentSystemMission)
+    {
+        var hours = String(Math.floor(missionOverride.m_ActiveDuration / 60 / 60));
+        if (hours.length == 1) hours = "0" + hours;
+        var minutes = String((missionOverride.m_ActiveDuration / 60) % 60);
+        if (minutes.length == 1) minutes = "0" + minutes;
+        
+        var agentIcon = slot.m_AgentIcon;
+        
+        agentIcon.m_Timer._visible = true;
+        agentIcon.m_Timer.text = hours + ":" + minutes;
+        
+        if (missionOverride.m_ActiveDuration < missionData.m_ActiveDuration)
+        {
+            agentIcon.m_Timer.textColor = Colors.e_ColorPureGreen;
+        }
+        else if (missionOverride.m_ActiveDuration < missionData.m_ActiveDuration)
+        {
+            agentIcon.m_Timer.textColor = Colors.e_ColorLightRed;
+        }
+        else
+        {
+            agentIcon.m_Timer.textColor = Colors.e_ColorWhite;
+        }
     }
     
     private function UpdateAgentDisplay(agent:AgentSystemAgent)
