@@ -245,7 +245,6 @@ class com.xeio.AgentTweaks.AgentTweaks
             if (agent && missionData && missionData.m_MissionId > 0)
             {
                 var successChance:Number = AgentSystem.GetSuccessChanceForAgent(agent.m_AgentId, missionData.m_MissionId);
-                agentIcon._visible = true;
                 agentIcon.m_Success._visible = true;
                 agentIcon.m_Success.m_Text.text = successChance + "%";
                 
@@ -268,6 +267,10 @@ class com.xeio.AgentTweaks.AgentTweaks
                 SetMissionSlotTimer(slot, missionData, missionData);
                 agentIcon.m_Success._visible = false;
                 bonusView.m_Header.textColor = 0xFFFFFF
+            }
+            else
+            {
+                agentIcon.m_Success._visible = false;
             }
             
             for (var j = 0; j <= 10; j++)
