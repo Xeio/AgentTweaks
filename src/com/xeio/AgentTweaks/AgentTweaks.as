@@ -337,11 +337,10 @@ class com.xeio.AgentTweaks.AgentTweaks
             }
             else
             {
-                agentIcon.m_Timer._visible = false;
                 slot.u_bonusText._visible = false;
             }
             
-            agentIcon._visible = agentIcon.m_Timer._visible || agentIcon.m_Success._visible;
+            agentIcon._visible = agentIcon.m_Success._visible;
         }
     }
     
@@ -354,27 +353,19 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     private function SetMissionSlotTimer(slot:MovieClip, missionData:AgentSystemMission, missionOverride:AgentSystemMission)
     {
-        var hours = String(Math.floor(missionOverride.m_ActiveDuration / 60 / 60));
-        if (hours.length == 1) hours = "0" + hours;
-        var minutes = String((missionOverride.m_ActiveDuration / 60) % 60);
-        if (minutes.length == 1) minutes = "0" + minutes;
-        
-        var agentIcon = slot.m_AgentIcon;
-        
-        agentIcon.m_Timer._visible = true;
-        agentIcon.m_Timer.text = hours + ":" + minutes;
+        slot.m_Duration.text = slot.CalculateTimeString(missionOverride.m_ActiveDuration, false);
         
         if (missionOverride.m_ActiveDuration < missionData.m_ActiveDuration)
         {
-            agentIcon.m_Timer.textColor = Colors.e_ColorPureGreen;
+            slot.m_Duration.textColor = Colors.e_ColorPureGreen;
         }
         else if (missionOverride.m_ActiveDuration < missionData.m_ActiveDuration)
         {
-            agentIcon.m_Timer.textColor = Colors.e_ColorLightRed;
+            slot.m_Duration.textColor = Colors.e_ColorLightRed;
         }
         else
         {
-            agentIcon.m_Timer.textColor = Colors.e_ColorWhite;
+            slot.m_Duration.textColor = Colors.e_ColorWhite;
         }
     }
     
