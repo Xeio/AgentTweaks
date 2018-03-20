@@ -21,6 +21,7 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     static var GEAR_BAG:String = LDBFormat.LDBGetText(50200, 9405788);
     static var HEIGHT:Number = 20;
+    static var BONUS_OFFSET:Number = 310;
     
     private static var MATCH_NONE = 0;
     private static var MATCH_PARTIAL = 1;
@@ -317,7 +318,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                         var newItem = slot.attachMovie("IconSlot", "u_customItems" + customItemCount, slot.getNextHighestDepth());
                         newItem._height = newItem._width = HEIGHT;
                         newItem._y = slot.m_ActiveBG._height - HEIGHT - 5;
-                        newItem._x = 390 - (HEIGHT + 5) * bonus;
+                        newItem._x = BONUS_OFFSET - (HEIGHT + 5) * bonus;
                         var itemslot = new _global.com.Components.ItemSlot(undefined, 0, newItem);
                         itemslot.SetData(item);
                         
@@ -327,7 +328,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                 }
                 if (bonus > 0)
                 {
-                    slot.u_bonusText._x = 390 - (HEIGHT + 5) * bonus - 50;
+                    slot.u_bonusText._x = BONUS_OFFSET - (HEIGHT + 5) * bonus - 50;
                     slot.u_bonusText._visible = true;
                 }
                 else
