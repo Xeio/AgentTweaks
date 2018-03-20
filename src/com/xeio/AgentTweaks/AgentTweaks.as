@@ -243,6 +243,10 @@ class com.xeio.AgentTweaks.AgentTweaks
             var missionData:AgentSystemMission = slot.m_MissionData;
             var bonusView = slot.m_BonusView;
             
+            //Force the teaser reward to be the primary mission reward (this undoes the Funcom change to the base UI)
+            missionData.m_TeaserReward = missionData.m_Rewards[0];
+            slot.UpdateReward();
+            
             if (agent && missionData && missionData.m_MissionId > 0)
             {
                 var successChance:Number = AgentSystem.GetSuccessChanceForAgent(agent.m_AgentId, missionData.m_MissionId);
@@ -285,7 +289,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                 if (!slot.u_bonusText)
                 {
                     var m_Timer:TextField = slot.m_Timer;
-                    var bonusText = slot.createTextField("u_bonusText", slot.getNextHighestDepth(), 0, slot.m_ActiveBG._height - 15, 100, 20);
+                    var bonusText:TextField = slot.createTextField("u_bonusText", slot.getNextHighestDepth(), 0, slot.m_ActiveBG._height - 15, 100, 20);
                     bonusText.setNewTextFormat(m_Timer.getTextFormat());
                     bonusText.text = "Bonuses";
                     bonusText.embedFonts = true;
@@ -296,6 +300,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                 var bonus = 0;
                 for (var r in missionData.m_Rewards)
                 {
+                    if (r == 0) continue; //Skip the first reward, since it's going to show in the preview box
                     var item:InventoryItem = Inventory.CreateACGItemFromTemplate(missionData.m_Rewards[r], 0, 0, 1);
                     if(IsImportant(item))
                     {
@@ -304,6 +309,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                         newItem._y = slot.m_ActiveBG._height - newItem._height - 5;
                         newItem._x = 120 + (HEIGHT + 5) * normal;
                         var itemslot = new _global.com.Components.ItemSlot(undefined, 0, newItem);
+                        itemslot.SignalMouseUp.Connect(slot.HitAreaReleaseHandler, slot);
                         itemslot.SetData(item);
                         
                         customItemCount++;
@@ -320,6 +326,7 @@ class com.xeio.AgentTweaks.AgentTweaks
                         newItem._y = slot.m_ActiveBG._height - HEIGHT - 5;
                         newItem._x = BONUS_OFFSET - (HEIGHT + 5) * bonus;
                         var itemslot = new _global.com.Components.ItemSlot(undefined, 0, newItem);
+                        itemslot.SignalMouseUp.Connect(slot.HitAreaReleaseHandler, slot);
                         itemslot.SetData(item);
                         
                         customItemCount++;
