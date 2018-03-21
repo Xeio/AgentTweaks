@@ -131,17 +131,6 @@ class com.xeio.AgentTweaks.AgentTweaks
         removeAllButton.disableFocus = true;
         removeAllButton.addEventListener("click", this, "UnequipAll");
         
-        if (DistributedValueBase.GetDValue("AgentTweaks_DebugMode"))
-        {
-            var showMissionsButton = content.attachMovie("Final claim Reward States", "u_showMissions", content.getNextHighestDepth());
-            showMissionsButton._y = 700;
-            showMissionsButton._x = 50;
-            showMissionsButton._width = 160;
-            showMissionsButton.textField.text = "Show Missions";
-            showMissionsButton.disableFocus = true;
-            showMissionsButton.addEventListener("click", this, "ShowAvailableMissions");
-        }
-        
         content.m_Roster.m_PrevButton.addEventListener("click", this, "HighlightMatchingBonuses");
 		content.m_Roster.m_NextButton.addEventListener("click", this, "HighlightMatchingBonuses");
     }
