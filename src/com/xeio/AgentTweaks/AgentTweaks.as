@@ -94,6 +94,7 @@ class com.xeio.AgentTweaks.AgentTweaks
             ScheduleMissionDisplayUpdate();
             UpdateAgentDisplay(agentData);
         }
+        setTimeout(Delegate.create(this, HighlightMatchingBonuses), 50);
     }
     
     private function MissionCompleted()
