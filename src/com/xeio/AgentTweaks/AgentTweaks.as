@@ -9,6 +9,7 @@ import com.GameInterface.InventoryItem;
 import com.Utils.Archive;
 import com.Utils.Colors;
 import com.Utils.LDBFormat;
+import com.xeio.AgentTweaks.Utils;
 import mx.utils.Delegate;
 
 class com.xeio.AgentTweaks.AgentTweaks
@@ -35,6 +36,10 @@ class com.xeio.AgentTweaks.AgentTweaks
     static var RESILIENCE_ITEM:String = LDBFormat.LDBGetText(50200, 9399675);
     
     var m_agentInventory:Inventory;
+    var m_FavoriteAgents:Array;
+    
+    static var FAVORITE_PROP:String = "U_FAVORITE";
+    static var ARCHIVE_FAVORITES:String = "FavoriteAgents";
 
     public static function main(swfRoot:MovieClip):Void 
     {
@@ -65,11 +70,21 @@ class com.xeio.AgentTweaks.AgentTweaks
     
     public function Activate(config: Archive)
     {
+        m_FavoriteAgents = [];
+        var favorites:Array = config.FindEntryArray(ARCHIVE_FAVORITES);
+        for (var i = 0; i < favorites.length; i++)
+        {
+            m_FavoriteAgents.push(favorites[i]);
+        }
     }
 
     public function Deactivate(): Archive
     {
-        var archive: Archive = new Archive();			
+        var archive: Archive = new Archive();
+        for (var i = 0; i < m_FavoriteAgents.length; i++ )
+        {
+            archive.AddEntry(ARCHIVE_FAVORITES, m_FavoriteAgents[i]);
+        }
         return archive;
     }
 	
@@ -95,6 +110,63 @@ class com.xeio.AgentTweaks.AgentTweaks
             UpdateAgentDisplay(agentData);
         }
         setTimeout(Delegate.create(this, HighlightMatchingBonuses), 50);
+        ScheduleResort();
+    }
+    
+    private function ResortRoster()
+    {
+        var roster = _root.agentsystem.m_Window.m_Content.m_Roster;
+        if (!roster)
+        {
+            return;
+        }
+        
+        if (m_FavoriteAgents.length == 0)
+        {
+            //No favorites, don't need to resort
+            return;
+        }
+        
+        for (var i:Number = 0; i < roster.m_AllAgents.length; i++)
+        {
+            roster.m_AllAgents[i][FAVORITE_PROP] = Utils.Contains(m_FavoriteAgents, roster.m_AllAgents[i].m_AgentId);
+            if (roster.m_SortObject.options == 0 && roster.m_CompareMission == undefined)
+            {
+                //If not sorted by descending, reverse favorited property so these still show at the start
+                roster.m_AllAgents[i][FAVORITE_PROP] = !roster.m_AllAgents[i][FAVORITE_PROP];
+            }
+        }
+        
+        var ownedAgents = new Array();
+        var unownedAgents = new Array();
+        for (var i:Number = 0; i < roster.m_AllAgents.length; i++)
+        {
+            if (AgentSystem.HasAgent(roster.m_AllAgents[i].m_AgentId))
+            {
+                ownedAgents.push(roster.m_AllAgents[i]);
+            }
+            else
+            {
+                unownedAgents.push(roster.m_AllAgents[i]);
+            }
+        }
+
+        if (roster.m_CompareMission == undefined)
+        {
+            if (roster.m_SortObject.fields[0] != FAVORITE_PROP)
+            {
+                roster.m_SortObject.fields.unshift(FAVORITE_PROP);
+            }
+            ownedAgents.sortOn(roster.m_SortObject.fields, roster.m_SortObject.options);
+        }
+        else
+        {
+            ownedAgents.sortOn([FAVORITE_PROP, "m_SuccessChance", "m_Level", "m_Order"], Array.DESCENDING | Array.NUMERIC);
+        }
+        roster.m_AllAgents = ownedAgents.concat(unownedAgents);
+        roster.SetPage(roster.m_CurrentPage);
+        
+        HighlightMatchingBonuses();
     }
     
     private function MissionCompleted()
@@ -114,7 +186,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         
         if (!content.m_Roster || !content.m_MissionList)
         {
-            setTimeout(Delegate.create(this, InitializeUI), 100);
+            setTimeout(Delegate.create(this, InitializeUI), 50);
             return;
         }
         
@@ -133,7 +205,10 @@ class com.xeio.AgentTweaks.AgentTweaks
         removeAllButton.addEventListener("click", this, "UnequipAll");
         
         content.m_Roster.m_PrevButton.addEventListener("click", this, "HighlightMatchingBonuses");
-		content.m_Roster.m_NextButton.addEventListener("click", this, "HighlightMatchingBonuses");
+        content.m_Roster.m_NextButton.addEventListener("click", this, "HighlightMatchingBonuses");
+        content.m_Roster.m_SortDropdown.addEventListener("change", this, "ScheduleResort");
+        
+        ScheduleResort();
     }
     
     private function ShowAvailableMissions()
@@ -164,10 +239,21 @@ class com.xeio.AgentTweaks.AgentTweaks
             
             AgentSystem.SignalAvailableMissionsUpdated.Disconnect(availableMissionList.SlotAvailableMissionsUpdated, availableMissionList);
             
-            availableMissionList.SignalMissionSelected.Connect(InitializeMissionDetailUI, this);
+            availableMissionList.SignalMissionSelected.Connect(MissionSelected, this);
         }
         
         ScheduleMissionDisplayUpdate();        
+    }
+    
+    private function ScheduleResort()
+    {
+        setTimeout(Delegate.create(this, ResortRoster), 40);
+    }
+    
+    private function MissionSelected()
+    {
+        ScheduleResort();
+        InitializeMissionDetailUI();
     }
     
     private function InitializeMissionDetailUI()
@@ -181,6 +267,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         }
         
         missionDetail.SignalClose.Connect(ClearMatches, this);
+        missionDetail.SignalClose.Connect(ScheduleResort, this);
         missionDetail.SignalStartMission.Connect(ClearMatches, this);
         
         HighlightMatchingBonuses();
@@ -380,17 +467,35 @@ class com.xeio.AgentTweaks.AgentTweaks
             agent = agentInfoSheet.m_AgentData;
         }
         
-        var healthField : TextField = agentInfoSheet.u_health;
+        var healthField:TextField = agentInfoSheet.u_health;
+        if (!healthField)
+        {
+            var m_Timer : TextField = agentInfoSheet.m_Timer;
+            healthField = agentInfoSheet.createTextField("u_health", agentInfoSheet.getNextHighestDepth(), m_Timer._x, m_Timer._y, m_Timer._width, m_Timer._height)
+            healthField.setNewTextFormat(m_Timer.getTextFormat())
+            healthField.embedFonts = true;
+        }
+        
+        var favoriteField:MovieClip = agentInfoSheet.u_favorite;
+        if (!favoriteField)
+        {
+            var m_Timer : TextField = agentInfoSheet.m_Timer;
+            var favoriteText = agentInfoSheet.createTextField("u_favoriteText", agentInfoSheet.getNextHighestDepth(), healthField._x + 80, healthField._y - healthField._height + 3, 50, healthField._height)
+            favoriteText.setNewTextFormat(m_Timer.getTextFormat())
+            favoriteText.embedFonts = true;
+            favoriteText.text = "Favorite";
+            
+            favoriteField = agentInfoSheet.attachMovie("CheckBoxNoneLabel", "u_favorite", agentInfoSheet.getNextHighestDepth());
+            favoriteField.disableFocus = true;
+            favoriteField._x = favoriteText._x - 15;
+            favoriteField._y = favoriteText._y;
+            favoriteField.addEventListener("click", this, "AgentFavoriteChanged");
+            
+        }
+        favoriteField.selected = Utils.Contains(m_FavoriteAgents, agent.m_AgentId);
+        
         if (!AgentSystem.IsAgentFatigued(agent.m_AgentId))
         {
-            if (!healthField)
-            {
-                var m_Timer : TextField = agentInfoSheet.m_Timer;
-                healthField = agentInfoSheet.createTextField("u_health", agentInfoSheet.getNextHighestDepth(), m_Timer._x, m_Timer._y, m_Timer._width, m_Timer._height)
-                healthField.setNewTextFormat(m_Timer.getTextFormat())
-                healthField.embedFonts = true;
-            }
-            
             healthField._visible = true;
             healthField.text = "Fatigue: " + (100 - agent.m_FatiguePercent) + "%";
         }
@@ -398,6 +503,27 @@ class com.xeio.AgentTweaks.AgentTweaks
         {
             healthField._visible = false;
         }
+    }
+    
+    private function AgentFavoriteChanged()
+    {
+        var agentInfoSheet :MovieClip = _root.agentsystem.m_Window.m_Content.m_AgentInfoSheet;
+        if (!agentInfoSheet)
+        {
+            return;
+        }
+        
+        var agent:AgentSystemAgent = agentInfoSheet.m_AgentData;
+        if (agentInfoSheet.u_favorite.selected)
+        {
+            m_FavoriteAgents.push(agent.m_AgentId);
+        }
+        else
+        {
+            Utils.Remove(m_FavoriteAgents, agent.m_AgentId);
+        }
+        
+        ScheduleResort();
     }
     
     private function UnequipAll()

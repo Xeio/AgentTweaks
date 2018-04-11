@@ -9,7 +9,19 @@ class com.xeio.AgentTweaks.Utils
                 return true;
             }
         }
-        
+
         return false;
     }
+
+    public static function Remove(array:Array, target):Void
+    {
+        for (var i:Number = 0 ; i < array.length ; i++)
+        {
+            if (array[i] == target)
+            {
+                array.splice(i, 1);
+                return;
+            }
+        }
+    }    
 }
