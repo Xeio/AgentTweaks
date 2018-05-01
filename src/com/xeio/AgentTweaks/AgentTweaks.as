@@ -269,6 +269,7 @@ class com.xeio.AgentTweaks.AgentTweaks
         missionDetail.SignalClose.Connect(ClearMatches, this);
         missionDetail.SignalClose.Connect(ScheduleResort, this);
         missionDetail.SignalStartMission.Connect(ClearMatches, this);
+        missionDetail.SignalStartMission.Connect(ScheduleResort, this);
         
         HighlightMatchingBonuses();
     }
